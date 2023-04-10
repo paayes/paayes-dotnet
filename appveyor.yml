@@ -1,0 +1,77 @@
+version: 39.61.0.{build}
+image: Visual Studio 2019
+
+environment:
+  COVERALLS_REPO_TOKEN:
+    secure: T0PmP8uyzCseacBCDRBlti2y9Tz5DL6fknea0MKWvbPYrzADmLY2/5kOTfYIsPUk
+  # If you bump this, don't forget to bump `MinimumMockVersion` in `PaayesMockFixture.cs` as well.
+  PAAYES_MOCK_VERSION: 0.109.0
+
+deploy:
+- provider: NuGet
+  api_key:
+    secure: 0Ebqx5ZWpVXF+XtFMOjgYWyNXl+xHCHpab7HtzJOSS6IAjWxQc2v+yqO62nH2PN9
+  on:
+    appveyor_repo_tag: true
+
+cache:
+  - paayes-mock -> appveyor.yml
+
+install:
+  - ps: |
+      If(!(Test-Path ".\paayes-mock\paayes-mock_${env:PAAYES_MOCK_VERSION}"))
+      {
+        New-Item -Name ".\paayes-mock\paayes-mock_${env:PAAYES_MOCK_VERSION}" -ItemType "directory" -Force | Out-Null
+        wget "https://github.com/paayes/paayes-mock/releases/download/v${env:PAAYES_MOCK_VERSION}/paayes-mock_${env:PAAYES_MOCK_VERSION}_windows_amd64.zip" -OutFile ".\paayes-mock\paayes-mock_${env:PAAYES_MOCK_VERSION}_windows_amd64.zip"
+        7z.exe x -y -o".\paayes-mock\paayes-mock_${env:PAAYES_MOCK_VERSION}" ".\paayes-mock\paayes-mock_${env:PAAYES_MOCK_VERSION}_windows_amd64.zip" | Out-Null
+      }
+      $app = Start-Process -FilePath ".\paayes-mock\paayes-mock_${env:PAAYES_MOCK_VERSION}\paayes-mock.exe" -ArgumentList "-strict-version-check" -NoNewWindow -PassThru
+      Write-Host ("paayes-mock running, Id = $($app.Id)`n") -ForegroundColor Green
+      $env:PATH += ";" + (Get-Item -Path ".\paayes-mock\paayes-mock_${env:PAAYES_MOCK_VERSION}").FullName
+  - dotnet tool install dotnet-format --version 4.1.131201 --tool-path tools
+  - dotnet tool install coveralls.net --version 1.0.0 --tool-path tools
+
+before_build:
+  - ps: Write-Host $("`n               HOST INFORMATION               `n") -BackgroundColor DarkCyan
+  - dotnet --info
+  - ps: Write-Host $("`n               RESTORING PACKAGES FOR ALL FRAMEWORKS               `n") -BackgroundColor DarkCyan
+  - dotnet restore src\
+
+build:
+  parallel: true
+
+build_script:
+  - ps: Write-Host $("`n               BUILDING EVERYTHING               `n") -BackgroundColor DarkCyan
+  - dotnet build src\Paayes.net -c Release /p:ContinuousIntegrationBuild=true
+  - dotnet build src\Paayes.net -c Debug
+  - dotnet build src\PaayesTests -c Debug
+
+after_build:
+  - ps: Write-Host $("`n               PACKING UP               `n") -BackgroundColor DarkCyan
+  - dotnet pack -c Release src\Paayes.net
+
+test_script:
+  - ps: Write-Host $("`n               RUNNING TESTS               `n") -BackgroundColor DarkCyan
+  - dotnet test src\PaayesTests\PaayesTests.csproj
+
+after_test:
+  - ps: Write-Host $("`n               RUNNING FORMAT CHECK               `n") -BackgroundColor DarkCyan
+  - .\tools\dotnet-format --check src/Paayes.net.sln
+  - ps: Write-Host $("`n               RUNNING COVERAGE               `n") -BackgroundColor DarkCyan
+  - dotnet test -c Debug -f netcoreapp3.1 src/PaayesTests/PaayesTests.csproj --no-build /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:ExcludeByAttribute=CompilerGenerated
+  - ps: |
+      # Secure env vars are not available on all branches, so make sure the
+      # token is available before invoking Coveralls.
+      if (Test-Path env:COVERALLS_REPO_TOKEN) {
+        .\tools\csmacnz.Coveralls --opencover -i src/PaayesTests/coverage.netcoreapp3.1.opencover.xml --useRelativePaths
+      }
+
+artifacts:
+  - path: 'src\Paayes.net\bin\Release\*.nupkg'
+
+# these commands tell appveyor to open an RDP session for debugging
+#init:
+#- ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+#
+#on_finish:
+#- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

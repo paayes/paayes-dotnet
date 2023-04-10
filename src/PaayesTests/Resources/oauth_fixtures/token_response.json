@@ -1,0 +1,9 @@
+{
+  "access_token": "sk_test_access_token",
+  "livemode": false,
+  "refresh_token": "rt_refresh_token",
+  "token_type": "bearer",
+  "paayes_publishable_key": "pk_test_paayes_publishable_key",
+  "paayes_user_id": "acct_test_token",
+  "scope": "read_only"
+}
