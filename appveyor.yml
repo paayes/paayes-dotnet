@@ -3,14 +3,14 @@ image: Visual Studio 2019
 
 environment:
   COVERALLS_REPO_TOKEN:
-    secure: T0PmP8uyzCseacBCDRBlti2y9Tz5DL6fknea0MKWvbPYrzADmLY2/5kOTfYIsPUk
+    secure: zeoCvEvTodmxy2g8JnDwWBcOyJAKXCHqG
   # If you bump this, don't forget to bump `MinimumMockVersion` in `PaayesMockFixture.cs` as well.
   PAAYES_MOCK_VERSION: 0.109.0
 
 deploy:
 - provider: NuGet
   api_key:
-    secure: 0Ebqx5ZWpVXF+XtFMOjgYWyNXl+xHCHpab7HtzJOSS6IAjWxQc2v+yqO62nH2PN9
+    secure: oy2ip6s2ldywwj7x2g6a2ml6qdfo57we5ghzicgydwpry4
   on:
     appveyor_repo_tag: true
 
